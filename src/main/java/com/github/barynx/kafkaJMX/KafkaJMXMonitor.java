@@ -27,7 +27,7 @@ public class KafkaJMXMonitor {
 
         String hostname = "3.120.31.41";
         String port = "9999";
-        long pollingIntervalMs = 5000;
+        long pollingIntervalMs = 60000;
         String csvOutputPath = "./KafkaMetrics.csv";
 
             new KafkaJMXMonitor().run(hostname, port, pollingIntervalMs, csvOutputPath);
@@ -36,19 +36,6 @@ public class KafkaJMXMonitor {
     private void run(String hostname, String port, long pollingIntervalMs, String csvOutputPath){
 
         try {
-            //create empty CSV file
-            String[] headers = {
-                    "time",
-                    "underReplicatedPartitions",
-                    "activeControllerCount",
-                    "offlinePartitionsCount",
-                    "bytesInPerSec",
-                    "bytesOutPerSec",
-                    "totalTimeMsRequestProduceMean",
-                    "totalTimeMsRequestFetchConsumerMean"};
-
-            KafkaMetricsCSVexporter exporter = new KafkaMetricsCSVexporter();
-            exporter.createCSVFile(headers,csvOutputPath);
 
             //connect to JMX server
             JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://" + hostname + ":" + port + "/jmxrmi");
@@ -75,9 +62,23 @@ public class KafkaJMXMonitor {
             HistogramMBean totalTimeMsRequestProduceMBeanProxy = MBeanServerInvocationHandler.newProxyInstance(mbeanServerConnection, totalTimeMsRequestProduce, HistogramMBean.class, true);
             HistogramMBean totalTimeMsRequestFetchConsumerMBeanProxy = MBeanServerInvocationHandler.newProxyInstance(mbeanServerConnection, totalTimeMsRequestFetchConsumer, HistogramMBean.class, true);
 
+
+            //create empty CSV file
+            String[] headers = {
+                    "time",
+                    "underReplicatedPartitions",
+                    "activeControllerCount",
+                    "offlinePartitionsCount",
+                    "bytesInPerSec",
+                    "bytesOutPerSec",
+                    "totalTimeMsRequestProduceMean",
+                    "totalTimeMsRequestFetchConsumerMean"};
+
+            KafkaMetricsCSVexporter exporter = new KafkaMetricsCSVexporter();
+            exporter.createCSVFile(headers,csvOutputPath);
+
             //query JMX server every pollingIntervalMs milliseconds
             while(true){
-
 
                 logger.info("Current time: " + Calendar.getInstance().getTime());
 
