@@ -30,12 +30,26 @@ public class KafkaJMXMonitor {
         long pollingIntervalMs = 5000;
         String csvOutputPath = "./KafkaMetrics.csv";
 
-            new KafkaJMXMonitor().run(hostname, port, pollingIntervalMs);
+            new KafkaJMXMonitor().run(hostname, port, pollingIntervalMs, csvOutputPath);
     }
 
-    public void run(String hostname, String port, long pollingIntervalMs){
+    public void run(String hostname, String port, long pollingIntervalMs, String csvOutputPath){
 
         try {
+            //create empty CSV file
+            String[] headers = {
+                    "time",
+                    "underReplicatedPartitions",
+                    "activeControllerCount",
+                    "offlinePartitionsCount",
+                    "bytesInPerSec",
+                    "bytesOutPerSec",
+                    "totalTimeMsRequestProduceMean",
+                    "totalTimeMsRequestFetchConsumerMean"};
+
+            KafkaMetricsCSVexporter exporter = new KafkaMetricsCSVexporter();
+            exporter.createCSVFile(headers,csvOutputPath);
+
             //connect to JMX server
             JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://" + hostname + ":" + port + "/jmxrmi");
             JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
@@ -64,11 +78,13 @@ public class KafkaJMXMonitor {
             //query JMX server every pollingIntervalMs milliseconds
             while(true){
 
+
+                logger.info("Current time: " + Calendar.getInstance().getTime());
+
                 logger.info("kafka.server:type=ReplicaManager,name=UnderReplicatedPartitions: " + underReplicatedPartitionsMbeanProxy.getValue());
                 logger.info("kafka.server:type=ReplicaManager,name=ActiveControllerCount: " + activeControllerCountMbeanProxy.getValue());
                 logger.info("kafka.server:type=ReplicaManager,name=OfflinePartitionsCount: " + offlinePartitionsCountMbeanProxy.getValue());
 
-                logger.info("Current time: " + Calendar.getInstance().getTime());
                 logger.info("kafka.server:type=BrokerTopicMetrics,name=BytesInPerSec: " + bytesInPerSecMbeanProxy.getOneMinuteRate());
                 logger.info("kafka.server:type=BrokerTopicMetrics,name=BytesOutPerSec: " + bytesOutPerSecMbeanProxy.getOneMinuteRate());
 
@@ -76,6 +92,16 @@ public class KafkaJMXMonitor {
                 logger.info("kafka.network:type=RequestMetrics,name=TotalTimeMs,request=FetchConsumer (mean): " + totalTimeMsRequestFetchConsumerMBeanProxy.getMean());
 
                 //append row to CSV
+                exporter.getPrinter().printRecord(Calendar.getInstance().getTime(),
+                        underReplicatedPartitionsMbeanProxy.getValue(),
+                        activeControllerCountMbeanProxy.getValue(),
+                        offlinePartitionsCountMbeanProxy.getValue(),
+                        bytesInPerSecMbeanProxy.getOneMinuteRate(),
+                        bytesOutPerSecMbeanProxy.getOneMinuteRate(),
+                        totalTimeMsRequestProduceMBeanProxy.getMean(),
+                        totalTimeMsRequestFetchConsumerMBeanProxy.getMean()
+                        );
+                exporter.getPrinter().flush();
 
                 Thread.sleep(pollingIntervalMs);
             }
