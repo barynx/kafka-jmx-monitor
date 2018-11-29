@@ -33,7 +33,7 @@ public class KafkaJMXMonitor {
             new KafkaJMXMonitor().run(hostname, port, pollingIntervalMs, csvOutputPath);
     }
 
-    public void run(String hostname, String port, long pollingIntervalMs, String csvOutputPath){
+    private void run(String hostname, String port, long pollingIntervalMs, String csvOutputPath){
 
         try {
             //create empty CSV file
